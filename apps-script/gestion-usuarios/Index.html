@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gestión de Usuarios – Caja de Pac</title>
+
+  <!-- Bootstrap 5 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+
+  <style>
+    :root {
+      --brand: #1a73e8;
+      --brand-dark: #1558c0;
+      --brand-light: #e8f0fe;
+      --sidebar-w: 220px;
+    }
+
+    body { background: #f4f6fb; font-family: 'Segoe UI', Arial, sans-serif; min-height: 100vh; }
+
+    /* ── Navbar ── */
+    .navbar-brand img { height: 32px; }
+    .navbar { background: var(--brand); }
+    .navbar-brand, .navbar-brand:hover { color: #fff; font-weight: 700; font-size: 1.1rem; }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      min-height: calc(100vh - 56px);
+      background: #fff;
+      border-right: 1px solid #e0e0e0;
+      padding-top: 1rem;
+    }
+    .sidebar .nav-link { color: #444; border-radius: 8px; margin: 2px 8px; padding: 10px 14px; }
+    .sidebar .nav-link.active, .sidebar .nav-link:hover { background: var(--brand-light); color: var(--brand); font-weight: 600; }
+    .sidebar .nav-link i { margin-right: 8px; font-size: 1.1rem; }
+
+    /* ── Content ── */
+    .main-content { flex: 1; padding: 28px 32px; }
+
+    /* ── Cards ── */
+    .card { border: none; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.07); }
+    .card-header { background: var(--brand); color: #fff; border-radius: 12px 12px 0 0 !important; font-weight: 600; }
+
+    /* ── Table ── */
+    .table thead th { background: #f1f5fb; color: #1a1a2e; font-size: .85rem; text-transform: uppercase; letter-spacing: .05em; }
+    .table tbody tr:hover { background: #f0f6ff; }
+    .zona-badge { display: inline-block; min-width: 44px; text-align: center; padding: 3px 10px; border-radius: 20px; font-size: .82rem; font-weight: 600; background: #e8f0fe; color: var(--brand); }
+    .gestor-code { font-family: 'Courier New', monospace; font-weight: 700; color: #1a1a2e; }
+    .val-activo   { color: #198754; font-weight: 600; }
+    .val-correcto { color: #0d6efd; font-weight: 600; }
+    .val-vacio    { color: #aaa; font-style: italic; }
+
+    /* ── Loader ── */
+    .spinner-overlay { display: none; position: fixed; inset: 0; background: rgba(255,255,255,.7); z-index: 9999; align-items: center; justify-content: center; }
+    .spinner-overlay.show { display: flex; }
+
+    /* ── Toast ── */
+    .toast-container { z-index: 10000; }
+
+    /* ── Char counter ── */
+    .char-counter { font-size: .78rem; color: #888; }
+    .char-counter.over { color: #dc3545; font-weight: 600; }
+
+    /* ── Empty state ── */
+    .empty-state { text-align: center; padding: 60px 20px; color: #888; }
+    .empty-state i { font-size: 3rem; color: #ccc; }
+
+    /* ── Section title ── */
+    .section-title { font-size: 1.4rem; font-weight: 700; color: #1a1a2e; margin-bottom: 1.5rem; }
+
+    @media (max-width: 768px) {
+      .sidebar { width: 100%; min-height: auto; border-right: none; border-bottom: 1px solid #e0e0e0; }
+      .main-layout { flex-direction: column !important; }
+      .main-content { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ───────────────── Navbar ───────────────── -->
+<nav class="navbar navbar-expand px-3 py-2">
+  <span class="navbar-brand">
+    <i class="bi bi-people-fill me-2"></i>Gestión de Usuarios
+  </span>
+  <span class="ms-auto text-white-50 small d-none d-md-block">Caja de Pac</span>
+</nav>
+
+<!-- ───────────────── Layout ───────────────── -->
+<div class="d-flex main-layout">
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <ul class="nav flex-column">
+      <li class="nav-item">
+        <a class="nav-link active" href="#" id="nav-gestion" onclick="showSection('gestion')">
+          <i class="bi bi-table"></i> Gestión de Usuarios
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#" id="nav-solicitud" onclick="showSection('solicitud')">
+          <i class="bi bi-person-plus-fill"></i> Solicitar Usuario
+        </a>
+      </li>
+    </ul>
+  </nav>
+
+  <!-- Main -->
+  <main class="main-content">
+
+    <!-- ═══════════════ SECCIÓN: GESTIÓN ═══════════════ -->
+    <section id="sec-gestion">
+      <div class="section-title"><i class="bi bi-table me-2 text-primary"></i>Gestión de Usuarios</div>
+
+      <!-- Filtro sucursal -->
+      <div class="card mb-4">
+        <div class="card-body">
+          <div class="row g-3 align-items-end">
+            <div class="col-12 col-md-5">
+              <label class="form-label fw-semibold">Selecciona una Sucursal</label>
+              <select id="sel-sucursal" class="form-select form-select-lg">
+                <option value="">— Cargando sucursales… —</option>
+              </select>
+            </div>
+            <div class="col-auto">
+              <button class="btn btn-primary btn-lg" onclick="cargarUsuarios()">
+                <i class="bi bi-search me-1"></i> Buscar
+              </button>
+            </div>
+            <div class="col-auto ms-auto d-none" id="btn-refresh-wrap">
+              <button class="btn btn-outline-secondary" onclick="cargarUsuarios()" title="Actualizar">
+                <i class="bi bi-arrow-clockwise"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla de usuarios -->
+      <div class="card" id="tabla-card" style="display:none!important">
+        <div class="card-header d-flex align-items-center justify-content-between">
+          <span><i class="bi bi-people me-2"></i>Usuarios – <span id="lbl-sucursal-activa"></span></span>
+          <span class="badge bg-white text-primary" id="lbl-total">0 registros</span>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0" id="tbl-usuarios">
+              <thead>
+                <tr>
+                  <th>Zona</th>
+                  <th>Usuario (Gestor)</th>
+                  <th>Nombre del Gestor</th>
+                  <th>Puesto</th>
+                  <th>No.</th>
+                  <th>Sucursal</th>
+                  <th>Validación</th>
+                  <th class="text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-usuarios"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div id="empty-state" style="display:none">
+        <div class="empty-state">
+          <i class="bi bi-inbox d-block mb-3"></i>
+          <p class="mb-0">No se encontraron usuarios para esta sucursal.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════ SECCIÓN: SOLICITUD ═══════════════ -->
+    <section id="sec-solicitud" style="display:none">
+      <div class="section-title"><i class="bi bi-person-plus-fill me-2 text-primary"></i>Solicitar Nuevo Usuario</div>
+
+      <div class="card" style="max-width:640px">
+        <div class="card-header"><i class="bi bi-file-earmark-person me-2"></i>Datos de la Solicitud</div>
+        <div class="card-body">
+          <form id="form-solicitud" novalidate>
+
+            <!-- Sucursal -->
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Sucursal <span class="text-danger">*</span></label>
+              <select id="sol-sucursal" class="form-select" required>
+                <option value="">— Selecciona —</option>
+              </select>
+              <div class="invalid-feedback">Campo requerido.</div>
+            </div>
+
+            <!-- Nombre completo -->
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Nombre Completo del Gestor <span class="text-danger">*</span></label>
+              <input type="text" id="sol-nombre" class="form-control" placeholder="Ej. Juan Pérez López" required />
+              <div class="invalid-feedback">Campo requerido.</div>
+            </div>
+
+            <!-- Tipo de puesto -->
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Tipo de Puesto <span class="text-danger">*</span></label>
+              <select id="sol-tipo" class="form-select" required onchange="onTipoChange()">
+                <option value="">— Selecciona —</option>
+                <option value="Gestor">Gestor</option>
+                <option value="Analista">Analista</option>
+                <option value="Cajero">Cajero</option>
+                <option value="Coordinador">Coordinador</option>
+                <option value="Jurídico">Jurídico</option>
+              </select>
+              <div class="invalid-feedback">Campo requerido.</div>
+            </div>
+
+            <!-- ¿Tiene zona? (solo analistas) -->
+            <div class="mb-3" id="wrap-zona">
+              <label class="form-label fw-semibold">¿Tiene Zona a Cargo?</label>
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="sol-tiene-zona" onchange="onZonaToggle()" />
+                <label class="form-check-label" for="sol-tiene-zona">Sí, tiene zona asignada</label>
+              </div>
+            </div>
+            <div class="mb-3" id="wrap-zona-num" style="display:none">
+              <label class="form-label">Número de Zona</label>
+              <input type="text" id="sol-zona" class="form-control" placeholder="Ej. 1-1, 2-3, S/A" />
+            </div>
+
+            <!-- Usuario sugerido -->
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Usuario Sugerido (Prefijo + Clave)</label>
+              <div class="input-group">
+                <span class="input-group-text fw-bold" id="lbl-prefijo">S-</span>
+                <input type="text" id="sol-clave" class="form-control text-uppercase"
+                       placeholder="NOMBREAP" maxlength="10"
+                       oninput="actualizarUsuarioPreview()" />
+              </div>
+              <div class="d-flex justify-content-between mt-1">
+                <small class="text-muted">Máx. 12 caracteres totales (prefijo + clave)</small>
+                <span id="counter-usuario" class="char-counter">0 / 12</span>
+              </div>
+              <div class="mt-1 p-2 bg-light rounded" id="preview-usuario" style="display:none">
+                Vista previa: <span class="gestor-code" id="lbl-preview-usuario"></span>
+              </div>
+            </div>
+
+            <!-- Quién solicita -->
+            <div class="mb-4">
+              <label class="form-label fw-semibold">Quién Solicita <span class="text-danger">*</span></label>
+              <input type="text" id="sol-quien" class="form-control" placeholder="Nombre del solicitante / área" required />
+              <div class="invalid-feedback">Campo requerido.</div>
+            </div>
+
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-primary px-4">
+                <i class="bi bi-send me-1"></i> Enviar Solicitud
+              </button>
+              <button type="button" class="btn btn-outline-secondary" onclick="limpiarSolicitud()">
+                <i class="bi bi-x-circle me-1"></i> Limpiar
+              </button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ───────────────── Modal Editar Usuario ───────────────── -->
+<div class="modal fade" id="modal-editar" tabindex="-1" aria-labelledby="modal-editar-label" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header" style="background:var(--brand);color:#fff">
+        <h5 class="modal-title" id="modal-editar-label"><i class="bi bi-pencil-fill me-2"></i>Editar Usuario</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-row-index" />
+
+        <div class="row g-3">
+          <!-- Zona -->
+          <div class="col-12 col-md-3">
+            <label class="form-label fw-semibold">Zona</label>
+            <input type="text" id="edit-zona" class="form-control" placeholder="Ej. 1-1" />
+            <small class="text-muted">Formato: #-# o S/A</small>
+          </div>
+
+          <!-- Gestor -->
+          <div class="col-12 col-md-4">
+            <label class="form-label fw-semibold">Usuario (Gestor)</label>
+            <input type="text" id="edit-gestor" class="form-control text-uppercase"
+                   maxlength="12" oninput="this.value=this.value.toUpperCase(); contarGestor()" />
+            <div class="d-flex justify-content-between">
+              <small class="text-muted">Máx. 12 caracteres</small>
+              <span id="counter-gestor" class="char-counter">0 / 12</span>
+            </div>
+          </div>
+
+          <!-- Número -->
+          <div class="col-12 col-md-2">
+            <label class="form-label fw-semibold">No.</label>
+            <input type="number" id="edit-numero" class="form-control" min="1" />
+          </div>
+
+          <!-- Sucursal -->
+          <div class="col-12 col-md-3">
+            <label class="form-label fw-semibold">Sucursal</label>
+            <input type="text" id="edit-sucursal" class="form-control text-uppercase" />
+          </div>
+
+          <!-- Nombre completo -->
+          <div class="col-12">
+            <label class="form-label fw-semibold">Nombre del Gestor</label>
+            <input type="text" id="edit-nombre" class="form-control" />
+          </div>
+
+          <!-- Puesto -->
+          <div class="col-12 col-md-4">
+            <label class="form-label fw-semibold">Puesto</label>
+            <select id="edit-puesto" class="form-select">
+              <option value="">— Sin definir —</option>
+              <option value="Gestor">Gestor</option>
+              <option value="Analista">Analista</option>
+              <option value="Cajero">Cajero</option>
+              <option value="Coordinador">Coordinador</option>
+              <option value="Jurídico">Jurídico</option>
+            </select>
+          </div>
+
+          <!-- Validación -->
+          <div class="col-12 col-md-4">
+            <label class="form-label fw-semibold">Validación</label>
+            <select id="edit-validacion" class="form-select">
+              <option value="">— Sin validar —</option>
+              <option value="ACTIVO">ACTIVO</option>
+              <option value="CORRECTO">CORRECTO</option>
+              <option value="INACTIVO">INACTIVO</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarCambios()">
+          <i class="bi bi-floppy me-1"></i> Guardar Cambios
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ───────────────── Spinner ───────────────── -->
+<div class="spinner-overlay" id="spinner">
+  <div class="text-center">
+    <div class="spinner-border text-primary" style="width:3rem;height:3rem"></div>
+    <div class="mt-2 text-primary fw-semibold">Procesando…</div>
+  </div>
+</div>
+
+<!-- ───────────────── Toasts ───────────────── -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+  <div id="toast-ok" class="toast align-items-center text-bg-success border-0" role="alert">
+    <div class="d-flex">
+      <div class="toast-body" id="toast-ok-msg"></div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+  <div id="toast-err" class="toast align-items-center text-bg-danger border-0" role="alert">
+    <div class="d-flex">
+      <div class="toast-body" id="toast-err-msg"></div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>
+  </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+// ────────────────────────────────────────────────────────
+// ESTADO GLOBAL
+// ────────────────────────────────────────────────────────
+let usuariosActuales = [];
+let modalEditar;
+
+const PREFIJOS = {
+  'Gestor':       'G-',
+  'Analista':     'S-',
+  'Cajero':       'C-',
+  'Coordinador':  'CO-',
+  'Jurídico':     'J-'
+};
+
+// ────────────────────────────────────────────────────────
+// INICIALIZACIÓN
+// ────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  modalEditar = new bootstrap.Modal(document.getElementById('modal-editar'));
+  cargarSucursales();
+
+  document.getElementById('form-solicitud').addEventListener('submit', e => {
+    e.preventDefault();
+    enviarSolicitud();
+  });
+});
+
+// ────────────────────────────────────────────────────────
+// NAVEGACIÓN
+// ────────────────────────────────────────────────────────
+function showSection(sec) {
+  document.getElementById('sec-gestion').style.display  = sec === 'gestion'  ? '' : 'none';
+  document.getElementById('sec-solicitud').style.display = sec === 'solicitud' ? '' : 'none';
+  document.getElementById('nav-gestion').classList.toggle('active', sec === 'gestion');
+  document.getElementById('nav-solicitud').classList.toggle('active', sec === 'solicitud');
+  return false;
+}
+
+// ────────────────────────────────────────────────────────
+// SUCURSALES
+// ────────────────────────────────────────────────────────
+function cargarSucursales() {
+  google.script.run
+    .withSuccessHandler(llenarSucursales)
+    .withFailureHandler(err => toastError('Error al cargar sucursales: ' + err.message))
+    .getSucursales();
+}
+
+function llenarSucursales(lista) {
+  const opts = lista.map(s => `<option value="${s}">${s}</option>`).join('');
+  document.getElementById('sel-sucursal').innerHTML = '<option value="">— Selecciona una sucursal —</option>' + opts;
+
+  const solOpts = lista.map(s => `<option value="${s}">${s}</option>`).join('');
+  document.getElementById('sol-sucursal').innerHTML = '<option value="">— Selecciona —</option>' + solOpts;
+}
+
+// ────────────────────────────────────────────────────────
+// CARGAR USUARIOS
+// ────────────────────────────────────────────────────────
+function cargarUsuarios() {
+  const suc = document.getElementById('sel-sucursal').value;
+  if (!suc) { toastError('Selecciona una sucursal primero.'); return; }
+
+  mostrarSpinner(true);
+  document.getElementById('tabla-card').style.display = 'none';
+  document.getElementById('empty-state').style.display = 'none';
+
+  google.script.run
+    .withSuccessHandler(datos => {
+      mostrarSpinner(false);
+      usuariosActuales = datos;
+      renderTabla(datos, suc);
+      document.getElementById('btn-refresh-wrap').classList.remove('d-none');
+    })
+    .withFailureHandler(err => {
+      mostrarSpinner(false);
+      toastError('Error al cargar usuarios: ' + err.message);
+    })
+    .getUsuariosBySucursal(suc);
+}
+
+function renderTabla(datos, sucursal) {
+  const tbody = document.getElementById('tbody-usuarios');
+  document.getElementById('lbl-sucursal-activa').textContent = sucursal;
+  document.getElementById('lbl-total').textContent = datos.length + ' registro' + (datos.length !== 1 ? 's' : '');
+
+  if (datos.length === 0) {
+    document.getElementById('empty-state').style.display = '';
+    return;
+  }
+
+  tbody.innerHTML = datos.map(u => `
+    <tr>
+      <td><span class="zona-badge">${esc(u.zona)}</span></td>
+      <td><span class="gestor-code">${esc(u.gestor)}</span></td>
+      <td>${esc(u.nombre)}</td>
+      <td><span class="badge bg-secondary">${esc(u.puesto) || '—'}</span></td>
+      <td class="text-center">${esc(u.numero)}</td>
+      <td>${esc(u.sucursal)}</td>
+      <td><span class="${claseVal(u.validacion)}">${u.validacion || '—'}</span></td>
+      <td class="text-center">
+        <button class="btn btn-sm btn-outline-primary" onclick="abrirEdicion(${u.rowIndex})">
+          <i class="bi bi-pencil"></i>
+        </button>
+      </td>
+    </tr>
+  `).join('');
+
+  document.getElementById('tabla-card').style.removeProperty('display');
+}
+
+function claseVal(v) {
+  if (!v) return 'val-vacio';
+  const up = v.toUpperCase();
+  if (up === 'ACTIVO')   return 'val-activo';
+  if (up === 'CORRECTO') return 'val-correcto';
+  return '';
+}
+
+function esc(v) {
+  if (v === null || v === undefined) return '';
+  return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ────────────────────────────────────────────────────────
+// EDICIÓN
+// ────────────────────────────────────────────────────────
+function abrirEdicion(rowIndex) {
+  const u = usuariosActuales.find(x => x.rowIndex === rowIndex);
+  if (!u) return;
+
+  document.getElementById('edit-row-index').value = rowIndex;
+  document.getElementById('edit-zona').value       = u.zona       || '';
+  document.getElementById('edit-gestor').value     = u.gestor     || '';
+  document.getElementById('edit-nombre').value     = u.nombre     || '';
+  document.getElementById('edit-numero').value     = u.numero     || '';
+  document.getElementById('edit-sucursal').value   = u.sucursal   || '';
+
+  const PUESTOS = ['Gestor','Analista','Cajero','Coordinador','Jurídico'];
+  const selPuesto = document.getElementById('edit-puesto');
+  selPuesto.value = PUESTOS.includes(u.puesto) ? u.puesto : '';
+
+  const selVal = document.getElementById('edit-validacion');
+  const valUpp = (u.validacion || '').toUpperCase();
+  selVal.value = ['ACTIVO','CORRECTO','INACTIVO'].includes(valUpp) ? valUpp : '';
+
+  contarGestor();
+  modalEditar.show();
+}
+
+function contarGestor() {
+  const val = document.getElementById('edit-gestor').value;
+  const counter = document.getElementById('counter-gestor');
+  counter.textContent = val.length + ' / 12';
+  counter.classList.toggle('over', val.length > 12);
+}
+
+function guardarCambios() {
+  const rowIndex = parseInt(document.getElementById('edit-row-index').value);
+  const campos = {
+    zona:       document.getElementById('edit-zona').value.trim(),
+    gestor:     document.getElementById('edit-gestor').value.trim().toUpperCase(),
+    nombre:     document.getElementById('edit-nombre').value.trim(),
+    puesto:     document.getElementById('edit-puesto').value,
+    numero:     document.getElementById('edit-numero').value.trim(),
+    sucursal:   document.getElementById('edit-sucursal').value.trim().toUpperCase(),
+    validacion: document.getElementById('edit-validacion').value
+  };
+
+  if (campos.gestor.length > 12) {
+    toastError('El usuario no puede exceder 12 caracteres.'); return;
+  }
+
+  mostrarSpinner(true);
+
+  // Guardar cada campo modificado secuencialmente
+  const entradas = Object.entries(campos);
+  let idx = 0;
+
+  function guardarSiguiente() {
+    if (idx >= entradas.length) {
+      mostrarSpinner(false);
+      modalEditar.hide();
+      toastOk('Usuario actualizado correctamente.');
+      // Refrescar fila local
+      const u = usuariosActuales.find(x => x.rowIndex === rowIndex);
+      if (u) Object.assign(u, campos);
+      const suc = document.getElementById('sel-sucursal').value;
+      renderTabla(usuariosActuales, suc);
+      return;
+    }
+    const [campo, valor] = entradas[idx++];
+    google.script.run
+      .withSuccessHandler(res => {
+        if (!res.success) {
+          mostrarSpinner(false);
+          toastError(res.error || 'Error al guardar ' + campo);
+        } else {
+          guardarSiguiente();
+        }
+      })
+      .withFailureHandler(err => {
+        mostrarSpinner(false);
+        toastError('Error: ' + err.message);
+      })
+      .updateUsuario(rowIndex, campo, valor);
+  }
+
+  guardarSiguiente();
+}
+
+// ────────────────────────────────────────────────────────
+// SOLICITUD DE USUARIO
+// ────────────────────────────────────────────────────────
+function onTipoChange() {
+  const tipo = document.getElementById('sol-tipo').value;
+  const prefijo = PREFIJOS[tipo] || 'S-';
+  document.getElementById('lbl-prefijo').textContent = prefijo;
+  actualizarUsuarioPreview();
+
+  // Mostrar zona solo para Analistas
+  document.getElementById('wrap-zona').style.display = tipo === 'Analista' ? '' : 'none';
+  if (tipo !== 'Analista') {
+    document.getElementById('sol-tiene-zona').checked = false;
+    document.getElementById('wrap-zona-num').style.display = 'none';
+  }
+}
+
+function onZonaToggle() {
+  const tiene = document.getElementById('sol-tiene-zona').checked;
+  document.getElementById('wrap-zona-num').style.display = tiene ? '' : 'none';
+}
+
+function actualizarUsuarioPreview() {
+  const prefijo = document.getElementById('lbl-prefijo').textContent;
+  const clave   = document.getElementById('sol-clave').value.toUpperCase();
+  document.getElementById('sol-clave').value = clave;
+  const completo = prefijo + clave;
+  const counter  = document.getElementById('counter-usuario');
+  counter.textContent = completo.length + ' / 12';
+  counter.classList.toggle('over', completo.length > 12);
+
+  if (clave) {
+    document.getElementById('lbl-preview-usuario').textContent = completo;
+    document.getElementById('preview-usuario').style.display = '';
+  } else {
+    document.getElementById('preview-usuario').style.display = 'none';
+  }
+}
+
+function enviarSolicitud() {
+  const form = document.getElementById('form-solicitud');
+  if (!form.checkValidity()) { form.classList.add('was-validated'); return; }
+
+  const prefijo  = document.getElementById('lbl-prefijo').textContent;
+  const clave    = document.getElementById('sol-clave').value.toUpperCase().trim();
+  const usuario  = prefijo + clave;
+  const tieneZona = document.getElementById('sol-tiene-zona').checked;
+
+  if (usuario.length > 12) {
+    toastError('El usuario sugerido no puede exceder 12 caracteres.'); return;
+  }
+
+  const datos = {
+    sucursal:       document.getElementById('sol-sucursal').value,
+    nombreCompleto: document.getElementById('sol-nombre').value.trim(),
+    tipo:           document.getElementById('sol-tipo').value,
+    tieneZona:      tieneZona,
+    zona:           tieneZona ? document.getElementById('sol-zona').value.trim() : '',
+    prefijo:        usuario,
+    quienSolicita:  document.getElementById('sol-quien').value.trim()
+  };
+
+  mostrarSpinner(true);
+  google.script.run
+    .withSuccessHandler(res => {
+      mostrarSpinner(false);
+      if (res.success) {
+        toastOk(res.mensaje);
+        limpiarSolicitud();
+      } else {
+        toastError(res.error);
+      }
+    })
+    .withFailureHandler(err => {
+      mostrarSpinner(false);
+      toastError('Error al enviar: ' + err.message);
+    })
+    .solicitarUsuario(datos);
+}
+
+function limpiarSolicitud() {
+  document.getElementById('form-solicitud').reset();
+  document.getElementById('form-solicitud').classList.remove('was-validated');
+  document.getElementById('wrap-zona').style.display = '';
+  document.getElementById('wrap-zona-num').style.display = 'none';
+  document.getElementById('preview-usuario').style.display = 'none';
+  document.getElementById('counter-usuario').textContent = '0 / 12';
+  document.getElementById('lbl-prefijo').textContent = 'S-';
+}
+
+// ────────────────────────────────────────────────────────
+// UTILIDADES UI
+// ────────────────────────────────────────────────────────
+function mostrarSpinner(show) {
+  document.getElementById('spinner').classList.toggle('show', show);
+}
+
+function toastOk(msg) {
+  document.getElementById('toast-ok-msg').textContent = msg;
+  new bootstrap.Toast(document.getElementById('toast-ok'), { delay: 4000 }).show();
+}
+
+function toastError(msg) {
+  document.getElementById('toast-err-msg').textContent = msg;
+  new bootstrap.Toast(document.getElementById('toast-err'), { delay: 5000 }).show();
+}
+</script>
+</body>
+</html>
