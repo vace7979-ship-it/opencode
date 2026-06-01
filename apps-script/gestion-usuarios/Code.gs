@@ -11,6 +11,7 @@ const COL_NOMBRE     = 2; // C
 const COL_NUM        = 3; // D
 const COL_SUCURSAL   = 4; // E
 const COL_VALIDACION = 5; // F
+const COL_PUESTO     = 6; // G
 
 const MAX_USUARIO_CHARS = 12;
 
@@ -58,7 +59,8 @@ function getUsuariosBySucursal(sucursal) {
         nombre:     data[i][COL_NOMBRE],
         numero:     data[i][COL_NUM],
         sucursal:   data[i][COL_SUCURSAL],
-        validacion: data[i][COL_VALIDACION]
+        validacion: data[i][COL_VALIDACION],
+        puesto:     data[i][COL_PUESTO]
       });
     }
   }
@@ -77,7 +79,8 @@ function updateUsuario(rowIndex, campo, valor) {
     nombre:     COL_NOMBRE     + 1,
     numero:     COL_NUM        + 1,
     sucursal:   COL_SUCURSAL   + 1,
-    validacion: COL_VALIDACION + 1
+    validacion: COL_VALIDACION + 1,
+    puesto:     COL_PUESTO     + 1
   };
 
   if (!colMap[campo]) return { success: false, error: 'Campo no válido: ' + campo };

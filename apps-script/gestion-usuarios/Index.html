@@ -152,6 +152,7 @@
                   <th>Zona</th>
                   <th>Usuario (Gestor)</th>
                   <th>Nombre del Gestor</th>
+                  <th>Puesto</th>
                   <th>No.</th>
                   <th>Sucursal</th>
                   <th>Validación</th>
@@ -203,10 +204,11 @@
               <label class="form-label fw-semibold">Tipo de Puesto <span class="text-danger">*</span></label>
               <select id="sol-tipo" class="form-select" required onchange="onTipoChange()">
                 <option value="">— Selecciona —</option>
+                <option value="Gestor">Gestor</option>
                 <option value="Analista">Analista</option>
                 <option value="Cajero">Cajero</option>
-                <option value="Gerente">Gerente</option>
                 <option value="Coordinador">Coordinador</option>
+                <option value="Jurídico">Jurídico</option>
               </select>
               <div class="invalid-feedback">Campo requerido.</div>
             </div>
@@ -314,6 +316,19 @@
             <input type="text" id="edit-nombre" class="form-control" />
           </div>
 
+          <!-- Puesto -->
+          <div class="col-12 col-md-4">
+            <label class="form-label fw-semibold">Puesto</label>
+            <select id="edit-puesto" class="form-select">
+              <option value="">— Sin definir —</option>
+              <option value="Gestor">Gestor</option>
+              <option value="Analista">Analista</option>
+              <option value="Cajero">Cajero</option>
+              <option value="Coordinador">Coordinador</option>
+              <option value="Jurídico">Jurídico</option>
+            </select>
+          </div>
+
           <!-- Validación -->
           <div class="col-12 col-md-4">
             <label class="form-label fw-semibold">Validación</label>
@@ -371,10 +386,11 @@ let usuariosActuales = [];
 let modalEditar;
 
 const PREFIJOS = {
+  'Gestor':       'G-',
   'Analista':     'S-',
   'Cajero':       'C-',
-  'Gerente':      'G-',
-  'Coordinador':  'CO-'
+  'Coordinador':  'CO-',
+  'Jurídico':     'J-'
 };
 
 // ────────────────────────────────────────────────────────
@@ -459,6 +475,7 @@ function renderTabla(datos, sucursal) {
       <td><span class="zona-badge">${esc(u.zona)}</span></td>
       <td><span class="gestor-code">${esc(u.gestor)}</span></td>
       <td>${esc(u.nombre)}</td>
+      <td><span class="badge bg-secondary">${esc(u.puesto) || '—'}</span></td>
       <td class="text-center">${esc(u.numero)}</td>
       <td>${esc(u.sucursal)}</td>
       <td><span class="${claseVal(u.validacion)}">${u.validacion || '—'}</span></td>
@@ -500,6 +517,10 @@ function abrirEdicion(rowIndex) {
   document.getElementById('edit-numero').value     = u.numero     || '';
   document.getElementById('edit-sucursal').value   = u.sucursal   || '';
 
+  const PUESTOS = ['Gestor','Analista','Cajero','Coordinador','Jurídico'];
+  const selPuesto = document.getElementById('edit-puesto');
+  selPuesto.value = PUESTOS.includes(u.puesto) ? u.puesto : '';
+
   const selVal = document.getElementById('edit-validacion');
   const valUpp = (u.validacion || '').toUpperCase();
   selVal.value = ['ACTIVO','CORRECTO','INACTIVO'].includes(valUpp) ? valUpp : '';
@@ -521,6 +542,7 @@ function guardarCambios() {
     zona:       document.getElementById('edit-zona').value.trim(),
     gestor:     document.getElementById('edit-gestor').value.trim().toUpperCase(),
     nombre:     document.getElementById('edit-nombre').value.trim(),
+    puesto:     document.getElementById('edit-puesto').value,
     numero:     document.getElementById('edit-numero').value.trim(),
     sucursal:   document.getElementById('edit-sucursal').value.trim().toUpperCase(),
     validacion: document.getElementById('edit-validacion').value
